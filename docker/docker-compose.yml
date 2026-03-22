@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  postgres-skills:
+    image: postgres:16-alpine
+    container_name: postgres-skills
+    environment:
+      POSTGRES_DB: tsuskills_skills
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - pg-skills-data:/var/lib/postgresql/data
+    networks:
+      - tsuskills-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  skills-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: skills-service
+    environment:
+      CONFIG_FILE_PATH: config/config.docker.yaml
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres-skills:
+        condition: service_healthy
+    networks:
+      - tsuskills-net
+
+volumes:
+  pg-skills-data:
+
+networks:
+  tsuskills-net:
+    driver: bridge
