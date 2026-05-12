@@ -26,6 +26,14 @@ server:
   IdleTimeout: 60s
   ShutDownTimeOut: 30s
 
+kafka:
+  Brokers:
+    - "localhost:9092"
+  Topic: "tsu.events"
+  GroupID: "skills-group"
+  DialTimeout: 5s
+  ReadTimeout: 5s
+
 logger:
   logger:
     Level: "debug"

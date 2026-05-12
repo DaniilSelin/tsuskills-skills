@@ -296,6 +296,22 @@ func (r *Repository) GetApplicationsByVacancy(ctx context.Context, vacancyID uui
 	return r.scanApplications(rows)
 }
 
+func (r *Repository) DeleteApplicationsByVacancy(ctx context.Context, vacancyID uuid.UUID) error {
+	tag, err := r.pool.Exec(ctx, `DELETE FROM applications WHERE vacancy_id = $1`, vacancyID)
+	if err != nil {
+		return fmt.Errorf("delete applications by vacancy: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) DeleteResumesByUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM resumes WHERE user_id = $1`, userID)
+	if err != nil {
+		return fmt.Errorf("delete resumes by user: %w", err)
+	}
+	return nil
+}
+
 func (r *Repository) GetApplicationsByUser(ctx context.Context, userID uuid.UUID) ([]domain.Application, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT a.id, a.resume_id, a.vacancy_id, a.status, a.created_at, a.updated_at,

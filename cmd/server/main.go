@@ -10,12 +10,14 @@ import (
 	"syscall"
 
 	"tsuskills-skills/config"
-	router "tsuskills-skills/internal/delivery/http"
 	"tsuskills-skills/internal/delivery/http/handler"
+	"tsuskills-skills/internal/infra/kafka"
 	"tsuskills-skills/internal/infra/postgres"
 	"tsuskills-skills/internal/logger"
 	"tsuskills-skills/internal/repository"
 	"tsuskills-skills/internal/service"
+
+	router "tsuskills-skills/internal/delivery/http"
 )
 
 func main() {
@@ -49,6 +51,27 @@ func main() {
 
 	repo := repository.New(pool)
 	svc := service.New(repo, appLogger)
+
+	kafkaConsumer, err := kafka.NewConsumer(kafka.ConsumerConfig{
+		Brokers:     cfg.Kafka.Brokers,
+		Topic:       cfg.Kafka.Topic,
+		GroupID:     cfg.Kafka.GroupID,
+		DialTimeout: cfg.Kafka.DialTimeout,
+		ReadTimeout: cfg.Kafka.ReadTimeout,
+	}, func(ctx context.Context, event kafka.Event) error {
+		return svc.HandleEvent(ctx, event)
+	})
+	if err != nil {
+		appLogger.Fatal(ctx, fmt.Sprintf("Failed to initialize Kafka consumer: %v", err))
+	}
+	defer kafkaConsumer.Close()
+
+	go func() {
+		if err := kafkaConsumer.Consume(ctx); err != nil && ctx.Err() == nil {
+			appLogger.Error(ctx, fmt.Sprintf("Kafka consumer stopped: %v", err))
+		}
+	}()
+
 	h := handler.NewHandler(svc, appLogger)
 	r := router.NewRouter(h, appLogger)
 

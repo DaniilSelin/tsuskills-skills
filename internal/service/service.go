@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
 	"tsuskills-skills/internal/domain"
+	"tsuskills-skills/internal/infra/kafka"
 	"tsuskills-skills/internal/logger"
 
 	"github.com/google/uuid"
@@ -29,6 +31,7 @@ type IRepository interface {
 	ListResumesByUser(ctx context.Context, userID uuid.UUID) ([]domain.Resume, error)
 	UpdateResume(ctx context.Context, res *domain.Resume) error
 	DeleteResume(ctx context.Context, id uuid.UUID) error
+	DeleteResumesByUser(ctx context.Context, userID uuid.UUID) error
 	// Applications
 	CreateApplication(ctx context.Context, app *domain.Application) (uuid.UUID, error)
 	GetApplicationsByVacancy(ctx context.Context, vacancyID uuid.UUID) ([]domain.Application, error)
@@ -218,4 +221,61 @@ func (s *Service) GetApplication(ctx context.Context, id uuid.UUID) (*domain.App
 		return nil, s.errCode(err)
 	}
 	return a, domain.CodeOK
+}
+
+func (s *Service) HandleEvent(ctx context.Context, event kafka.Event) error {
+	switch event.Entity {
+	case kafka.EntityVacancy:
+		return s.handleVacancyEvent(ctx, event)
+	case kafka.EntityUser:
+		return s.handleUserEvent(ctx, event)
+	default:
+		return nil
+	}
+}
+
+func (s *Service) handleVacancyEvent(ctx context.Context, event kafka.Event) error {
+	switch event.Type {
+	case kafka.EventVacancyDeleted:
+		vacancyID, err := uuid.Parse(event.EntityID)
+		if err != nil || vacancyID == uuid.Nil {
+			var payload struct {
+				ID string `json:"id"`
+			}
+			if err2 := json.Unmarshal(event.Payload, &payload); err2 != nil {
+				s.log.Error(ctx, "handleVacancyEvent: invalid payload", zap.Error(err2))
+				return nil
+			}
+			vacancyID, err = uuid.Parse(payload.ID)
+			if err != nil {
+				s.log.Error(ctx, "handleVacancyEvent: invalid vacancy id", zap.Error(err))
+				return nil
+			}
+		}
+		if err := s.repo.DeleteApplicationsByVacancy(ctx, vacancyID); err != nil {
+			s.log.Error(ctx, "handleVacancyEvent: delete applications", zap.Error(err))
+			return err
+		}
+		s.log.Info(ctx, "handleVacancyEvent: deleted related applications", zap.String("vacancy_id", vacancyID.String()))
+	default:
+	}
+	return nil
+}
+
+func (s *Service) handleUserEvent(ctx context.Context, event kafka.Event) error {
+	switch event.Type {
+	case kafka.EventUserDeleted:
+		userID, err := uuid.Parse(event.EntityID)
+		if err != nil {
+			s.log.Error(ctx, "handleUserEvent: invalid user id", zap.Error(err))
+			return nil
+		}
+		if err := s.repo.DeleteResumesByUser(ctx, userID); err != nil {
+			s.log.Error(ctx, "handleUserEvent: delete resumes by user", zap.Error(err))
+			return err
+		}
+		s.log.Info(ctx, "handleUserEvent: deleted user resumes", zap.String("user_id", userID.String()))
+	default:
+	}
+	return nil
 }
