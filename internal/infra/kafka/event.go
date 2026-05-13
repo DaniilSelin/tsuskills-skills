@@ -12,6 +12,8 @@ const (
 	EventVacancyCreated = "vacancy.created"
 	EventVacancyUpdated = "vacancy.updated"
 	EventVacancyDeleted = "vacancy.deleted"
+	EventUserCreated    = "user.created"
+	EventUserUpdated    = "user.updated"
 	EventUserDeleted    = "user.deleted"
 )
 
@@ -29,7 +31,6 @@ type ConsumerConfig struct {
 	Topic       string        `mapstructure:"Topic"`
 	GroupID     string        `mapstructure:"GroupID"`
 	DialTimeout time.Duration `mapstructure:"DialTimeout"`
-	ReadTimeout time.Duration `mapstructure:"ReadTimeout"`
 }
 
 func NewEvent(eventType, entity, entityID string, payload interface{}) (Event, error) {

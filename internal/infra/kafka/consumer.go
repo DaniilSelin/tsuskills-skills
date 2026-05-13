@@ -37,7 +37,7 @@ func NewConsumer(cfg ConsumerConfig, handler func(context.Context, Event) error)
 		MinBytes:       1,
 		MaxBytes:       10e6,
 		CommitInterval: time.Second,
-		Dialer:         &kafkaGo.Dialer{Timeout: cfg.DialTimeout, ReadTimeout: cfg.ReadTimeout},
+		Dialer:         &kafkaGo.Dialer{Timeout: cfg.DialTimeout},
 	})
 
 	return &kafkaConsumer{reader: r, handler: handler}, nil

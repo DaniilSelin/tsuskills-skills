@@ -297,7 +297,7 @@ func (r *Repository) GetApplicationsByVacancy(ctx context.Context, vacancyID uui
 }
 
 func (r *Repository) DeleteApplicationsByVacancy(ctx context.Context, vacancyID uuid.UUID) error {
-	tag, err := r.pool.Exec(ctx, `DELETE FROM applications WHERE vacancy_id = $1`, vacancyID)
+	_, err := r.pool.Exec(ctx, `DELETE FROM applications WHERE vacancy_id = $1`, vacancyID)
 	if err != nil {
 		return fmt.Errorf("delete applications by vacancy: %w", err)
 	}

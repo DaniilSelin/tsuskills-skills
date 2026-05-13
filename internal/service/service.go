@@ -264,6 +264,10 @@ func (s *Service) handleVacancyEvent(ctx context.Context, event kafka.Event) err
 
 func (s *Service) handleUserEvent(ctx context.Context, event kafka.Event) error {
 	switch event.Type {
+	case kafka.EventUserCreated:
+		s.log.Info(ctx, "handleUserEvent: user created event", zap.String("user_id", event.EntityID))
+	case kafka.EventUserUpdated:
+		s.log.Info(ctx, "handleUserEvent: user updated event", zap.String("user_id", event.EntityID))
 	case kafka.EventUserDeleted:
 		userID, err := uuid.Parse(event.EntityID)
 		if err != nil {
@@ -276,6 +280,7 @@ func (s *Service) handleUserEvent(ctx context.Context, event kafka.Event) error 
 		}
 		s.log.Info(ctx, "handleUserEvent: deleted user resumes", zap.String("user_id", userID.String()))
 	default:
+		s.log.Debug(ctx, "handleUserEvent: unsupported user event type", zap.String("type", event.Type), zap.String("user_id", event.EntityID))
 	}
 	return nil
 }
